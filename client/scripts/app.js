@@ -2,14 +2,18 @@ var app = {
   //resturcture for clarity
   //additional blank or defualt properties that are not methods?
   storage: [], //data structure? Queue? 
-  server: 'http://parse.sfm6.hackreactor.com/chatterbox/classes/messages' // info
+  server: 'http://parse.sfm6.hackreactor.com/chatterbox/classes/messages', // info
+  rooms: new Set()
   //etc.? 
 }; 
 app.init = function() {
   //not sure yet what this is supposed to do?
   //suspect this is called when the app 'opens/page load
   //based on spec runner tests, it might also be ther server comminication handler
+  //fetch roomnames and append to room selector
+  app.fetch();
 };
+
 app.send = function(message) { 
   //initiates the AJAX request to send message to the server
   $.ajax({
@@ -30,20 +34,29 @@ app.send = function(message) {
   
 app.fetch = function() { 
   //initiates the AJAX request to pull new messages from the server. 
+  
+  
   $.ajax({
     // This is the url you should use to communicate with the parse API server.
-    url: this.server,
+    url: app.server,
     type: 'GET',
     data: null,
     contentType: 'json',
     success: function (data) {
-      console.log('chatterbox: Message sent');
+      console.log('chatterbox: Fetch successful');
       //send data from fetch to storage
-      this.storage = data;
+      app.storage = data.results;
+      for (var i = 0; i < app.storage.length; i++) {
+        if (!app.rooms.has(app.storage[i].roomname)) {
+          $('#roomSelect').append(`<option> ${app.storage[i].roomname} </option>`);
+        }
+        app.rooms.add(app.storage[i].roomname);
+      }
+      
     },
     error: function (data) {
       // See: https://developer.mozilla.org/en-US/docs/Web/API/console.error
-      console.error('chatterbox: Failed to send message', data);
+      console.error('chatterbox: Failed to fetch messages', data);
     }
   });
 };
@@ -69,9 +82,23 @@ app.renderMessage = function(message) { //input will be a reference to a specifi
     </div>`); 
 };
   
-app.renderRoom = function(room) {
-  //adds room specified by input to the room list drop down
-  $('#roomSelect').append(`<span> ${room} </span>`);
+app.renderRoom = function(thisRoom) {
+  // call on room change
+  //input room name
+  //output message object to renderMesage method
+  //to add:  
+    // 
+  //for each message check if mesage is in target room
+    //if true pass message object to renderMessage
+  if (app.rooms.has(thisRoom)) {
+    //loop through storage 
+      //call renderMessage on each message with a matching room value
+    app.storage.filter(message => message.roomname === thisRoom)
+               .forEach(message => app.renderMessage(message));
+  } else {
+    app.rooms.add(thisRoom);
+    $('#roomSelect').append(`<option> ${room} </option>`);
+  } 
 };
   
 app.handleUsernameClick = function () {
@@ -86,24 +113,41 @@ app.handleSubmit = function() {
   // sets to undefined(as yet) storage property?
   //has additional method that allows the recall/deletion of a message?
 };
+app.refreshFeed = function() {
+  app.fetch();
+  setTimeout(app.refreshFeed, 3000);
+};
 
 $('document').ready(function() {
   //start up on click handlers
   $('#main').on('click', '.username', function(event) {
     app.handleUsernameClick();
   });
+  // submitHandle trigger
   $('#send .submit').on('submit', function(event) {
     app.handleSubmit(event);
   });
-  var refreshFeed = setTimeout(function () {
-    app.fetch();
-    refreshFeed();
-  }, 500);
+  //click handler for 'add room' 
+  $('#roomSelect').change(function() {
+    if ($(this).val() === '...add room') {
+      var newRoom = prompt('What would you like to name your room?');
+      if (newRoom !== null && newRoom.length > 0) {
+        app.renderRoom(newRoom);
+      } else {
+        alert('woops, didn\'t catch that!  try again!');
+      }
+    } else {
+      app.renderRoom($(this).val());
+    }
+
+  });
+  
+  //app.refreshFeed();
   
    
   
   
-  
+  /*
   function displayLastTweets(){
          var lastIndex = streams.home.length - 1;
          index = indexLastTweetDiplayed;
@@ -125,7 +169,7 @@ $('document').ready(function() {
 
          setTimeout(displayLastTweets, 5000);
        };
-  
+  */
   
   
 });
